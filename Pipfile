@@ -6,6 +6,8 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+sqlalchemy = "*"
+flask-sqlalchmy = "*"
 
 [requires]
 python_version = "3.6"
