@@ -13,8 +13,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///'+os.path.join(basedir,'plane
 app.config['JWT_SECRET_KEY']= 'SECRET!!' #should change it
 app.config['MAIL_SERVER']='smtp.mailtrap.io'
 app.config['MAIL_PORT'] = 1234#port from mailtrap.io
-app.config['MAIL_USERNAME'] = 'username from mailtrap.io'
-app.config['MAIL_PASSWORD'] = 'password from mailtrap.io'
+app.config['MAIL_USERNAME'] = 'from mailtrap.io'
+app.config['MAIL_PASSWORD'] = 'from mailtrap.io'
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 
@@ -41,14 +41,12 @@ def db_seed():
                      home_star='Sol',
                      mass=2.258e23,
                      radius=1516,
-                     planet_id = "qwerty",
                      distance=35.98e6)
 
     venus = Planet(planet_name='Venus',
                          planet_type='Class K',
                          home_star='Sol',
                          mass=4.867e24,
-                         planet_id = "sdfg",
                          radius=3760,
                          distance=67.24e6)
 
@@ -56,7 +54,6 @@ def db_seed():
                      planet_type='Class M',
                      home_star='Sol',
                      mass=5.972e24,
-                     planet_id="dfghgf",
                      radius=3959,
                      distance=92.96e6)
 
@@ -149,7 +146,68 @@ def retrieve_password(email:str):
         return jsonify(Message = "account does not exist:  "+email),401
 
 
-        
+@app.route('/planet/<int:planet_id>',methods=['GET'])
+def planet_detail(planet_id: int):
+    planet = Planet.query.filter_by(planet_id=planet_id).first()
+    if planet:
+        result = planet_schema.dump(planet)
+        return jsonify(result)
+    else: 
+        return jsonify(message = 'the planet does not exist'),404
+    
+@app.route('/add_planet',methods=['POST'])
+@jwt_required
+def add_planet():
+    planet_name = request.form['planet_name']
+    planet = Planet.query.filter_by(planet_name=planet_name).first()
+    if planet:
+        return jsonify(message = "This planet already exists!"),409
+    else:
+        planet_type = request.form['planet_type']
+        home_star = request.form['home_star']
+        mass = float(request.form['mass'])
+        radius = float(request.form['radius'])
+        distance =float(request.form['distance'])
+
+        new_planet = Planet(planet_name=planet_name,planet_type=planet_type
+        ,home_star=home_star,
+        mass=mass,radius=radius,distance=distance)
+        db.session.add(new_planet)
+        db.session.commit()
+        return jsonify(message="New planet added!"),201
+
+
+@app.route('/update_planet',methods=['PUT'])
+@jwt_required
+def update_planet():
+        planet_id = request.form['planet_id']
+        planet  = Planet.query.filter_by(planet_id=planet_id).first()
+        if planet:
+            planet.planet_name = request.form['planet_name']
+            planet.planet_type = request.form['planet_type']
+            planet.home_star  = request.form['home_star']
+            planet.mass  = float(request.form['mass'])
+            planet.radius = float(request.form['radius'])
+            planet.distance = float(request.form['distance'])
+            db.session.commit()
+            return jsonify(message='planet updated successfully!'),202
+        else:
+            return jsonify(message= 'planet does not exist'),404
+
+
+@app.route('/delete_planet/<int:planet_id>',methods=['DELETE'])
+@jwt_required
+def delete_planet(planet_id:int):
+        planet = Planet.query.filter_by(planet_id=planet_id).first()
+        if planet:
+            db.session.delete(planet)
+            db.session.commit()
+            return jsonify(message="the planet "+planet.planet_name+ " is deleted"),201
+
+
+        else:
+            return jsonify(message="the planet does not exist"),404
+
 
 # database modules 
 class User(db.Model):
@@ -162,7 +220,7 @@ class User(db.Model):
 
 class Planet(db.Model):
     __tablename__ = "planets"
-    planet_id = Column(String,primary_key = True)
+    planet_id = Column(Integer,primary_key = True)
     planet_name = Column(String)
     planet_type = Column(String)
     home_star = Column(String)
