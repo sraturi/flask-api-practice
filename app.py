@@ -3,17 +3,25 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, Float
 from flask_marshmallow import Marshmallow
 from flask_jwt_extended import JWTManager, jwt_required , create_access_token
+from flask_mail import Mail, Message
 import os
 
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///'+os.path.join(basedir,'planets.db')
 app.config['JWT_SECRET_KEY']= 'SECRET!!' #should change it
-
+app.config['MAIL_SERVER']='smtp.mailtrap.io'
+app.config['MAIL_PORT'] = 1234#port from mailtrap.io
+app.config['MAIL_USERNAME'] = 'username from mailtrap.io'
+app.config['MAIL_PASSWORD'] = 'password from mailtrap.io'
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 jwt  =JWTManager(app)
+mail = Mail(app)
 # script for database init destroy and seed
 
 @app.cli.command('db_create')
@@ -130,6 +138,18 @@ def login():
     else:
         return jsonify(message="Invalid email or password"), 401
 
+@app.route('/retreive_password/<string:email>',methods = ['GET'])
+def retrieve_password(email:str):
+    user = User.query.filter_by(email=email).first()
+    if user: 
+        msg = Message('your password is '+ user.password,sender= "admin@training.com",recipients=[email])
+        mail.send(msg)
+        return jsonify(Message = "password sent to "+email)
+    else:
+        return jsonify(Message = "account does not exist:  "+email),401
+
+
+        
 
 # database modules 
 class User(db.Model):
